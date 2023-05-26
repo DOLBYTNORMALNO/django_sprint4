@@ -122,6 +122,15 @@ class Post(BaseModel):
             self.is_published = False
         super().save(*args, **kwargs)
 
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+
+        # TODO:Рассмотри вариант проставлять дату публикации здесь.
+        if self.pub_date > timezone.now():
+            self.is_published = False
+
+        super().save(force_insert, force_update, using, update_fields)
+
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')

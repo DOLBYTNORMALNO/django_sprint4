@@ -20,6 +20,9 @@ urlpatterns = [
         name='index'
     ),
     path(
+
+        # FIX: Перепиши на FBV.
+        # 'posts/<int:pk>/', PostDetailView.as_view(),
         'posts/<int:pk>/', views.post_detail,
         name='post_detail'
     ),
