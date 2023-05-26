@@ -143,6 +143,9 @@ class BaseFormTester(BaseTester):
             response = submitter.test_submit(
                 url=self._action, data=restored_data)
         except Exception as e:
+            print('*' * 30)
+            print(e)
+            print('*' * 30)
             raise AssertionError(
                 f'При создании {self.of_which_obj} {self.on_which_page} '
                 f'возникает ошибка:\n'
