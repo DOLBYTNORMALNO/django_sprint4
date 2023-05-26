@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-
 User = get_user_model()
 
 
@@ -107,7 +106,11 @@ class Post(BaseModel):
     published_posts = PublishedPostManager()
     objects = models.Manager()
 
-    image = models.ImageField('Фото', upload_to='blog_images', blank=True, null=True)
+    image = models.ImageField(
+        'Фото',
+        upload_to='blog_images',
+        blank=True,
+        null=True)
 
     class Meta:
         verbose_name = 'публикация'
@@ -125,7 +128,6 @@ class Post(BaseModel):
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
 
-        # TODO:Рассмотри вариант проставлять дату публикации здесь.
         if self.pub_date > timezone.now():
             self.is_published = False
 
@@ -133,8 +135,13 @@ class Post(BaseModel):
 
 
 class Comment(models.Model):
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name='comments')
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE)
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

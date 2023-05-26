@@ -10,7 +10,6 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.views import View
-from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from .utils import get_days_until_publication
@@ -63,7 +62,8 @@ class EditProfileView(UpdateView):
         return self.request.user
 
     def get_success_url(self):
-        return reverse('blog:profile', kwargs={'username': self.request.user.username})
+        return reverse('blog:profile',
+                       kwargs={'username': self.request.user.username})
 
 
 class IndexView(ListView):
@@ -73,7 +73,9 @@ class IndexView(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        return Post.published_posts.all().annotate(comment_count=Count('comments')).order_by('-pub_date')
+        return Post.published_posts.all().annotate(
+            comment_count=Count('comments')
+        ).order_by('-pub_date')
 
 
 class CategoryView(ListView):
@@ -84,7 +86,10 @@ class CategoryView(ListView):
     slug_url_kwarg = 'slug'
 
     def get_queryset(self):
-        self.category = get_object_or_404(Category, slug=self.kwargs.get(self.slug_url_kwarg), is_published=True)
+        self.category = get_object_or_404(
+            Category,
+            slug=self.kwargs.get(self.slug_url_kwarg),
+            is_published=True)
         return Post.published_posts.filter(category=self.category)
 
     def get_context_data(self, **kwargs):
@@ -95,7 +100,9 @@ class CategoryView(ListView):
 
 def post_detail(request, pk):
     if request.user.is_authenticated:
-        posts = Post.objects.filter(Q(is_published=True) | (Q(author=request.user) & Q(is_published=False)))
+        posts = Post.objects.filter(
+            Q(is_published=True) | (Q(author=request.user)
+                                    & Q(is_published=False)))
     else:
         posts = Post.published_posts.all()
 
@@ -172,7 +179,9 @@ class PostDeleteView(View):
         if request.user != post.author:
             raise PermissionDenied
         post.delete()
-        return redirect(reverse('blog:profile', kwargs={'username': post.author.username}))
+        return redirect(reverse(
+            'blog:profile',
+            kwargs={'username': post.author.username}))
 
 
 class CommentDeleteView(UserPassesTestMixin, View):
@@ -187,12 +196,17 @@ class CommentDeleteView(UserPassesTestMixin, View):
     def post(self, request, *args, **kwargs):
         comment = get_object_or_404(Comment, pk=self.kwargs['comment_id'])
         comment.delete()
-        return HttpResponseRedirect(reverse_lazy('blog:post_detail', kwargs={'pk': comment.post.id}))
+        return HttpResponseRedirect(
+            reverse_lazy(
+                'blog:post_detail',
+                kwargs={'pk': comment.post.id}))
 
     def delete(self, request, *args, **kwargs):
         comment = self.get_object()
         if request.user != comment.author:
             raise PermissionDenied
-        success_url = reverse_lazy('blog:post_detail', kwargs={'pk': comment.post.id})
+        success_url = reverse_lazy(
+            'blog:post_detail',
+            kwargs={'pk': comment.post.id})
         comment.delete()
         return HttpResponseRedirect(success_url)
