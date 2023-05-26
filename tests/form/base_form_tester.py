@@ -140,12 +140,17 @@ class BaseFormTester(BaseTester):
 
         restored_data = restore_cleaned_data(form.cleaned_data)
         try:
+            # TODO: Здесь можешь смотреть, какие данные и запросы выполняются
+            # в тесте.
+            print('!' * 30)
+            print(self._action)
+            print(restored_data)
             response = submitter.test_submit(
                 url=self._action, data=restored_data)
+            # Если не доходит до этой точки, значит тест упал.
+            # ps Не забудь удалить после отладки.
+            print('0' * 30)
         except Exception as e:
-            print('*' * 30)
-            print(e)
-            print('*' * 30)
             raise AssertionError(
                 f'При создании {self.of_which_obj} {self.on_which_page} '
                 f'возникает ошибка:\n'
