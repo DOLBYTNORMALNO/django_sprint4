@@ -11,23 +11,25 @@ from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.views import View
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Q
+from .utils import get_days_until_publication
 
 POSTS_ON_INDEX_PAGE = 10
 
 
-class PostCreateView(LoginRequiredMixin, CreateView):
-    model = Post
-    form_class = PostForm
-    template_name = 'blog/create.html'
-
-    def form_valid(self, form):
-        form.instance.author = self.request.user
-        if form.instance.pub_date > timezone.now():
-            form.instance.is_published = False
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse_lazy('blog:post_detail', args=[self.object.id])
+@login_required
+def post_create(request):
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            return redirect(reverse('blog:profile', args=[post.author]))
+    else:
+        form = PostForm()
+    return render(request, 'blog/create.html', {'form': form})
 
 
 class ProfileView(DetailView):
@@ -42,7 +44,10 @@ class ProfileView(DetailView):
         user_posts = Post.objects.filter(author=self.object)
         paginator = Paginator(user_posts, 10)
         page_number = self.request.GET.get('page')
-        context['page_obj'] = paginator.get_page(page_number)
+        page_obj = paginator.get_page(page_number)
+        for post in page_obj:
+            post.delta = get_days_until_publication(post)
+        context['page_obj'] = page_obj
         return context
 
 
@@ -68,7 +73,7 @@ class IndexView(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        return Post.published_posts.all()
+        return Post.published_posts.all().annotate(comment_count=Count('comments')).order_by('-pub_date')
 
 
 class CategoryView(ListView):
@@ -88,39 +93,41 @@ class CategoryView(ListView):
         return context
 
 
-class PostDetailView(DetailView):
-    model = Post
-    template_name = 'blog/detail.html'
-    context_object_name = 'post'
-    queryset = Post.published_posts.all()
+def post_detail(request, pk):
+    if request.user.is_authenticated:
+        posts = Post.objects.filter(Q(is_published=True) | (Q(author=request.user) & Q(is_published=False)))
+    else:
+        posts = Post.published_posts.all()
 
-    def get_object(self, queryset=None):
-        post = super().get_object(queryset)
-        post.comment_count = post.comments.count()
-        return post
+    post = get_object_or_404(posts, pk=pk)
+    post.comment_count = post.comments.count()
+    form = CommentForm()
+    comments = Comment.objects.filter(post=post)
+    context = {
+        'post': post,
+        'form': form,
+        'comments': comments,
+    }
+    return render(request, 'blog/detail.html', context)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['form'] = CommentForm()
-        context['comments'] = Comment.objects.filter(post=self.object)
-        return context
 
+@login_required
+def post_edit(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    if request.user != post.author:
+        return redirect('blog:post_detail', pk=post.pk)
 
-class PostUpdateView(UserPassesTestMixin, UpdateView):
-    model = Post
-    form_class = PostForm
-    template_name = 'blog/create.html'
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES, instance=post)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            return redirect('blog:post_detail', pk=post.id)
+    else:
+        form = PostForm(instance=post)
 
-    def form_valid(self, form):
-        form.instance.author = self.request.user
-        return super().form_valid(form)
-
-    def test_func(self):
-        post = self.get_object()
-        return self.request.user == post.author
-
-    def get_success_url(self):
-        return reverse_lazy('blog:post_detail', args=[self.object.id])
+    return render(request, 'blog/create.html', {'form': form})
 
 
 class CommentCreateView(LoginRequiredMixin, CreateView):
@@ -158,14 +165,14 @@ class PostDeleteView(View):
         post = get_object_or_404(Post, pk=self.kwargs['post_id'])
         if request.user != post.author:
             raise PermissionDenied
-        return render(request, 'blog/index.html', {'post': post})
+        return render(request, 'blog/create.html', {'post': post})
 
     def post(self, request, *args, **kwargs):
         post = get_object_or_404(Post, pk=self.kwargs['post_id'])
         if request.user != post.author:
             raise PermissionDenied
         post.delete()
-        return redirect(reverse('blog:profile'))
+        return redirect(reverse('blog:profile', kwargs={'username': post.author.username}))
 
 
 class CommentDeleteView(UserPassesTestMixin, View):

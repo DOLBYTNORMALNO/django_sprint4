@@ -5,9 +5,6 @@ from .views import \
     IndexView,\
     ProfileView,\
     EditProfileView,\
-    PostDetailView,\
-    PostCreateView,\
-    PostUpdateView,\
     PostDeleteView,\
     CommentCreateView,\
     CommentUpdateView,\
@@ -23,7 +20,7 @@ urlpatterns = [
         name='index'
     ),
     path(
-        'posts/<int:pk>/', PostDetailView.as_view(),
+        'posts/<int:pk>/', views.post_detail,
         name='post_detail'
     ),
     path(
@@ -39,11 +36,11 @@ urlpatterns = [
         name='edit_profile'
     ),
     path(
-        'posts/create/', PostCreateView.as_view(),
+        'posts/create/', views.post_create,
         name='post_create'
     ),
     path(
-        'posts/<int:pk>/edit/', PostUpdateView.as_view(),
+        'posts/<int:pk>/edit/', views.post_edit,
         name='edit_post'
     ),
     path(

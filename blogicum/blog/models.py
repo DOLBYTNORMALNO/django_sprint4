@@ -107,7 +107,7 @@ class Post(BaseModel):
     published_posts = PublishedPostManager()
     objects = models.Manager()
 
-    image = models.ImageField('Фото', upload_to='blog_images', blank=True)
+    image = models.ImageField('Фото', upload_to='blog_images', blank=True, null=True)
 
     class Meta:
         verbose_name = 'публикация'
@@ -116,6 +116,11 @@ class Post(BaseModel):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        if self.pub_date and self.pub_date > timezone.now():
+            self.is_published = False
+        super().save(*args, **kwargs)
 
 
 class Comment(models.Model):
