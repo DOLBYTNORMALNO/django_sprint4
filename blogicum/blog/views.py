@@ -50,13 +50,14 @@ class ProfileView(DetailView):
         return context
 
 
-class EditProfileView(UpdateView):
+class EditProfileView(LoginRequiredMixin, UpdateView):
     model = get_user_model()
     template_name = 'blog/user.html'
     fields = ['first_name', 'last_name', 'username', 'email']
     slug_field = 'username'
     slug_url_kwarg = 'username'
     context_object_name = 'profile_user'
+    login_url = '/login/'
 
     def get_object(self, queryset=None):
         return self.request.user
