@@ -106,32 +106,19 @@ class Post(BaseModel):
     published_posts = PublishedPostManager()
     objects = models.Manager()
 
-    image = models.ImageField(
-        'Фото',
-        upload_to='blog_images',
-        blank=True,
-        null=True)
-
-    class Meta:
-        verbose_name = 'публикация'
-        verbose_name_plural = 'Публикации'
-        ordering = ['-pub_date']
-
-    def __str__(self):
-        return self.title
+    image = models.ImageField(upload_to='post_images/', blank=True, null=True)
+    image_exists = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
+        if self.image:
+            self.image_exists = True
+        else:
+            self.image_exists = False
+
         if self.pub_date and self.pub_date > timezone.now():
             self.is_published = False
+
         super().save(*args, **kwargs)
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-
-        if self.pub_date > timezone.now():
-            self.is_published = False
-
-        super().save(force_insert, force_update, using, update_fields)
 
 
 class Comment(models.Model):
