@@ -106,8 +106,13 @@ class Post(BaseModel):
     published_posts = PublishedPostManager()
     objects = models.Manager()
 
-    image = models.ImageField(upload_to='post_images/', blank=True)
-    image_exists = models.BooleanField(default=False)
+    image = models.ImageField(
+        upload_to='post_images/',
+        blank=True
+    )
+    image_exists = models.BooleanField(
+        default=False
+    )
 
     def save(self, *args, **kwargs):
         if self.image:

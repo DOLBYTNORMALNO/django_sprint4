@@ -5,8 +5,7 @@ from django.views.generic import DetailView, ListView, CreateView, UpdateView
 from .models import Category, Post, Comment
 from .forms import PostForm, CommentForm
 from django.urls import reverse_lazy, reverse
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.mixins import UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.views import View
@@ -40,7 +39,9 @@ class ProfileView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        user_posts = Post.objects.filter(author=self.object).order_by('-pub_date')
+        user_posts = Post.objects.filter(
+            author=self.object
+        ).order_by('-pub_date')
         paginator = Paginator(user_posts, 10)
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
@@ -91,7 +92,9 @@ class CategoryView(ListView):
             Category,
             slug=self.kwargs.get(self.slug_url_kwarg),
             is_published=True)
-        return Post.published_posts.filter(category=self.category).order_by('-pub_date')
+        return Post.published_posts.filter(
+            category=self.category
+        ).order_by('-pub_date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
