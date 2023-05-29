@@ -175,43 +175,63 @@ class CommentUpdateView(UserPassesTestMixin, UpdateView):
         return reverse_lazy("blog:post_detail", args=[self.object.post.id])
 
 
-class PostDeleteView(View):
-    def get(self, request, *args, **kwargs):
-        post = get_object_or_404(Post, pk=self.kwargs["post_id"])
-        if request.user != post.author:
-            raise PermissionDenied
-        return render(request, "blog/create.html", {"post": post})
+class BaseDeleteView(UserPassesTestMixin, View):
+    model = None
+    template_name = None
+    success_url_name = None
 
-    def post(self, request, *args, **kwargs):
-        post = get_object_or_404(Post, pk=self.kwargs["post_id"])
-        if request.user != post.author:
-            raise PermissionDenied
-        post.delete()
-        return redirect(
-            reverse("blog:profile", kwargs={"username": post.author.username})
+    def get_object(self, **kwargs):
+        return get_object_or_404(self.model, pk=self.kwargs[self.key_name])
+
+    def test_func(self):
+        object = self.get_object()
+        return self.request.user == object.author
+
+    def get(self, request, *args, **kwargs):
+        object = self.get_object()
+        return render(
+            request, self.template_name, {self.model.__name__.lower(): object}
         )
 
-
-class CommentDeleteView(UserPassesTestMixin, View):
-    def test_func(self):
-        comment = get_object_or_404(Comment, pk=self.kwargs["comment_id"])
-        return self.request.user == comment.author
-
-    def get(self, request, *args, **kwargs):
-        comment = get_object_or_404(Comment, pk=self.kwargs["comment_id"])
-        return render(request, "blog/comment.html", {"comment": comment})
-
     def post(self, request, *args, **kwargs):
-        comment = get_object_or_404(Comment, pk=self.kwargs["comment_id"])
-        comment.delete()
-        return redirect("blog:post_detail", pk=comment.post.id)
+        object = self.get_object()
+        object.delete()
+        return self.get_success_url(object)
+
+    def get_success_url(self, object):
+        raise NotImplementedError
 
     def delete(self, request, *args, **kwargs):
-        comment = self.get_object()
-        if request.user != comment.author:
+        object = self.get_object()
+        if request.user != object.author:
             raise PermissionDenied
-        comment.delete()
-        success_url = reverse(
-            "blog:post_detail", kwargs={"pk": comment.post.id}
-        )
+        object.delete()
+        success_url = self.get_success_url(object)
         return redirect(success_url)
+
+
+class PostDeleteView(BaseDeleteView):
+    model = Post
+    template_name = "blog/create.html"
+    success_url_name = "blog:profile"
+    key_name = "post_id"
+
+    def get_success_url(self, object):
+        return redirect(
+            reverse(
+                self.success_url_name,
+                kwargs={"username": object.author.username},
+            )
+        )
+
+
+class CommentDeleteView(BaseDeleteView):
+    model = Comment
+    template_name = "blog/comment.html"
+    success_url_name = "blog:post_detail"
+    key_name = "comment_id"
+
+    def get_success_url(self, object):
+        return redirect(
+            reverse(self.success_url_name, kwargs={"pk": object.post.pk})
+        )
