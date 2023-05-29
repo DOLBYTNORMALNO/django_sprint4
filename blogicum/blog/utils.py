@@ -20,5 +20,4 @@ def get_days_until_publication(post):
     if post.pub_date > now:
         delta = post.pub_date - now
         return delta
-    else:
-        return 0
+    return 0

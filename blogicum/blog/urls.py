@@ -1,16 +1,18 @@
-from django.urls import path
-from . import views
-from .views import \
-    CategoryView,\
-    IndexView,\
-    ProfileView,\
-    EditProfileView,\
-    PostDeleteView,\
-    CommentCreateView,\
-    CommentUpdateView,\
-    CommentDeleteView
 from django.conf import settings
 from django.conf.urls.static import static
+from django.urls import path
+
+from . import views
+from .views import (
+    CategoryView,
+    IndexView,
+    ProfileView,
+    EditProfileView,
+    PostDeleteView,
+    CommentCreateView,
+    CommentUpdateView,
+    CommentDeleteView
+)
 
 app_name = 'blog'
 

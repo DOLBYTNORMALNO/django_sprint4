@@ -101,29 +101,20 @@ class Post(BaseModel):
         Location,
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         verbose_name='Местоположение'
     )
-    published_posts = PublishedPostManager()
     objects = models.Manager()
+    published_posts = PublishedPostManager()
 
     image = models.ImageField(
         upload_to='post_images/',
         blank=True
     )
-    image_exists = models.BooleanField(
-        default=False
-    )
 
-    def save(self, *args, **kwargs):
-        if self.image:
-            self.image_exists = True
-        else:
-            self.image_exists = False
-
-        if self.pub_date and self.pub_date > timezone.now():
-            self.is_published = False
-
-        super().save(*args, **kwargs)
+    @property
+    def image_exists(self):
+        return bool(self.image)
 
 
 class Comment(models.Model):

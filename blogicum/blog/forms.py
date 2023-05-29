@@ -1,4 +1,5 @@
 from django import forms
+
 from .models import Post, Comment
 
 
@@ -7,7 +8,7 @@ class PostForm(forms.ModelForm):
         model = Post
         fields = ['title', 'text', 'category', 'location', 'pub_date', 'image']
         widgets = {
-            'pub_date': forms.SelectDateWidget()
+            'pub_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
 
 

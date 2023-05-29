@@ -1,17 +1,16 @@
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
+from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.generic import DetailView, ListView, CreateView, UpdateView
-from .models import Category, Post, Comment
-from .forms import PostForm, CommentForm
 from django.urls import reverse_lazy, reverse
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.contrib.auth import get_user_model
-from django.core.paginator import Paginator
 from django.views import View
-from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
-from .utils import get_days_until_publication
+from django.views.generic import ListView, CreateView, UpdateView
+
+from .forms import PostForm, CommentForm
+from .models import Category, Post, Comment, User
+
 
 POSTS_ON_INDEX_PAGE = 10
 
@@ -21,38 +20,38 @@ def post_create(request):
     if request.method == 'POST':
         form = PostForm(request.POST, request.FILES)
         if form.is_valid():
-            post = form.save(commit=False)
-            post.author = request.user
-            post.save()
-            return redirect(reverse('blog:profile', args=[post.author]))
+            form.instance.author = request.user
+            form.save()
+            return redirect(reverse('blog:profile', args=[request.user.username]))
     else:
         form = PostForm()
     return render(request, 'blog/create.html', {'form': form})
 
 
-class ProfileView(DetailView):
-    model = get_user_model()
+class ProfileView(ListView):
     template_name = 'blog/profile.html'
-    context_object_name = 'user'
+    context_object_name = 'posts'
+    paginate_by = POSTS_ON_INDEX_PAGE
     slug_url_kwarg = 'username'
     slug_field = 'username'
 
+    def get_queryset(self):
+        self.user = get_object_or_404(
+            User,
+            username=self.kwargs.get(self.slug_url_kwarg),
+        )
+        return Post.objects.filter(
+            author=self.user
+        ).order_by('-pub_date')
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        user_posts = Post.objects.filter(
-            author=self.object
-        ).order_by('-pub_date')
-        paginator = Paginator(user_posts, 10)
-        page_number = self.request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
-        for post in page_obj:
-            post.delta = get_days_until_publication(post)
-        context['page_obj'] = page_obj
+        context['user'] = self.user
         return context
 
 
 class EditProfileView(LoginRequiredMixin, UpdateView):
-    model = get_user_model()
+    model = User
     template_name = 'blog/user.html'
     fields = ['first_name', 'last_name', 'username', 'email']
     slug_field = 'username'
@@ -69,10 +68,9 @@ class EditProfileView(LoginRequiredMixin, UpdateView):
 
 
 class IndexView(ListView):
-    model = Post
     template_name = 'blog/index.html'
     context_object_name = 'page_obj'
-    paginate_by = 10
+    paginate_by = POSTS_ON_INDEX_PAGE
 
     def get_queryset(self):
         return Post.published_posts.all().annotate(
@@ -81,10 +79,9 @@ class IndexView(ListView):
 
 
 class CategoryView(ListView):
-    model = Post
     template_name = 'blog/category.html'
     context_object_name = 'posts'
-    paginate_by = 10
+    paginate_by = POSTS_ON_INDEX_PAGE
     slug_url_kwarg = 'slug'
 
     def get_queryset(self):
@@ -106,14 +103,19 @@ def post_detail(request, pk):
     if request.user.is_authenticated:
         posts = Post.objects.filter(
             Q(is_published=True) | (Q(author=request.user)
-                                    & Q(is_published=False)))
+                                    & Q(is_published=False))).annotate(
+            comment_count=Count('comments')
+        )
     else:
-        posts = Post.published_posts.all()
+        posts = Post.published_posts.all().annotate(
+            comment_count=Count('comments')
+        )
 
     post = get_object_or_404(posts, pk=pk)
-    post.comment_count = post.comments.count()
+
     form = CommentForm()
-    comments = Comment.objects.filter(post=post)
+    comments = post.comments.all()
+
     context = {
         'post': post,
         'form': form,
@@ -200,17 +202,14 @@ class CommentDeleteView(UserPassesTestMixin, View):
     def post(self, request, *args, **kwargs):
         comment = get_object_or_404(Comment, pk=self.kwargs['comment_id'])
         comment.delete()
-        return HttpResponseRedirect(
-            reverse_lazy(
-                'blog:post_detail',
-                kwargs={'pk': comment.post.id}))
+        return redirect('blog:post_detail', pk=comment.post.id)
 
     def delete(self, request, *args, **kwargs):
         comment = self.get_object()
         if request.user != comment.author:
             raise PermissionDenied
-        success_url = reverse_lazy(
+        comment.delete()
+        success_url = reverse(
             'blog:post_detail',
             kwargs={'pk': comment.post.id})
-        comment.delete()
-        return HttpResponseRedirect(success_url)
+        return redirect(success_url)
