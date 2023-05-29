@@ -5,33 +5,37 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('blog', '0006_auto_20230527_1938'),
+        ("blog", "0006_auto_20230527_1938"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='post',
+            name="post",
             options={},
         ),
         migrations.AlterModelManagers(
-            name='post',
-            managers=[
-            ],
+            name="post",
+            managers=[],
         ),
         migrations.RemoveField(
-            model_name='post',
-            name='image_exists',
+            model_name="post",
+            name="image_exists",
         ),
         migrations.AlterField(
-            model_name='post',
-            name='image',
-            field=models.ImageField(blank=True, upload_to='post_images/'),
+            model_name="post",
+            name="image",
+            field=models.ImageField(blank=True, upload_to="post_images/"),
         ),
         migrations.AlterField(
-            model_name='post',
-            name='location',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='blog.location', verbose_name='Местоположение'),
+            model_name="post",
+            name="location",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="blog.location",
+                verbose_name="Местоположение",
+            ),
         ),
     ]
